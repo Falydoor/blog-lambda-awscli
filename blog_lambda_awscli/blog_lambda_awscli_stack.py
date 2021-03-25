@@ -1,8 +1,12 @@
-import aws_cdk.aws_lambda as lambda_
-import aws_cdk.aws_s3 as s3_
-import aws_cdk.aws_s3_deployment as s3_deployment_
-from aws_cdk import core as cdk
-from aws_cdk.lambda_layer_awscli import AwsCliLayer
+from aws_cdk import (
+    aws_events as events_,
+    aws_lambda as lambda_,
+    aws_s3 as s3_,
+    aws_s3_deployment as s3_deployment_,
+    aws_events_targets as targets_,
+    lambda_layer_awscli as awscli_,
+    core as cdk
+)
 
 
 class BlogLambdaAwscliStack(cdk.Stack):
@@ -27,7 +31,7 @@ class BlogLambdaAwscliStack(cdk.Stack):
                               timeout=cdk.Duration.minutes(15))
 
         # Add Lambda layer containing the aws cli
-        fn.add_layers(AwsCliLayer(self, "AwsCliLayer"))
+        fn.add_layers(awscli_.AwsCliLayer(self, "AwsCliLayer"))
 
         # Grant Lambda access to S3 buckets
         bucket_source.grant_read(fn)
@@ -37,3 +41,9 @@ class BlogLambdaAwscliStack(cdk.Stack):
         s3_deployment_.BucketDeployment(self, "Deploy files to source bucket",
                                         sources=[s3_deployment_.Source.asset("./data")],
                                         destination_bucket=bucket_source)
+
+        # Trigger lambda every day
+        rule = events_.Rule(self, "Rule",
+                            schedule=events_.Schedule.rate(cdk.Duration.days(1)),
+                            )
+        rule.add_target(targets_.LambdaFunction(fn))
